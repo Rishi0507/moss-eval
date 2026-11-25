@@ -7,8 +7,10 @@ A test harness for [Moss Inference](https://docs.moss.dev/docs/inference/overvie
 | Stage | Needs a key | State |
 | - | - | - |
 | `preflight` | no | Ran on 25 Nov 2026. Log: [`logs/20261125-133327`](logs/20261125-133327/RESULTS.md) |
-| `inference` | yes | Ready. Runs once the project id and key are in `.env` |
-| `tasks` | yes | Ready. Same |
+| `inference` | yes | Ran on 25 Nov 2026. Log: [`logs/20261125-134920`](logs/20261125-134920/RESULTS.md) |
+| `tasks` | yes | Ran on 25 Nov 2026, 38 tasks. Same log |
+
+Live run total: $0.25 of the $10 credits ($0.03 inference, $0.22 tasks, from each task's own `usage.cost`).
 
 I tested the whole harness against a local fake server (`tools/mock_moss.py`) so the first real run works end to end. The fake server's numbers mean nothing and its logs stay out of git.
 
@@ -89,7 +91,63 @@ Every account gets $10 in credits. I sized each test before running it.
 
 I did not drain the credits to see `usage_limit_exceeded`. That would cost the full $10 and end the test. The run records whether a task cap above the balance gets accepted.
 
-## Findings so far
+## Live run results
+
+All numbers come from [`logs/20261125-134920/RESULTS.md`](logs/20261125-134920/RESULTS.md) and the raw JSONL beside it.
+
+### Inference
+
+| Measure | Result |
+| - | - |
+| Streaming TTFT, `moss/fastlane-1`, chat | p50 96 ms, p95 202 ms (27 of 30; the other 3 hit the burst limit) |
+| Streaming TTFT, responses | p50 99 ms, p95 197 ms (30 of 30) |
+| Decode speed | about 127 tokens/s at p50 |
+| Non-stream, 100 max tokens | p50 684 ms, p95 856 ms, p99 901 ms (n=60) |
+| TTFT next to other models on the same key (n=5 each) | fastlane-1 66 ms, `claude-haiku-5.5` 619 ms, `gpt-6-luna` 1139 ms |
+| Prefix cache, 6.9k token prompt | 6400 tokens cached on the second call, TTFT 449 ms to 109 ms |
+| `temperature: 0`, 5 runs | 5 identical outputs, with and without `seed` |
+| `json_schema`, 5 runs | 5 of 5 valid |
+| Usage counts | prompt + completion = total on every call; output within 1 token of `o200k_base` |
+
+Concurrency (`concurrency.png`):
+
+| In flight | OK | 429 | TTFT p50 |
+| - | - | - | - |
+| 1 | 8 of 8 | 0 | 62 ms |
+| 4 | 8 of 8 | 0 | 360 ms |
+| 16 | 12 of 32 | 20 | 1091 ms |
+| 64 | 13 of 128 | 115 | 625 ms |
+
+Headers say `x-ratelimit-limit-requests: 120`, but `remaining` starts at 10, so the real ceiling is the burst of 10.
+
+Server behavior that differs from the docs (`errors` table in RESULTS.md):
+
+| Request | Docs | Got |
+| - | - | - |
+| `/v1/responses` with `"input": ""` | 400 | 200 |
+| Body sent as `Content-Type: text/plain` | 400 or 415 | 200 |
+| 33 indexes in one call | 400 | 403 `permission_error` |
+
+The other 24 error cases matched the docs, each with a request id.
+
+### Tasks
+
+What held up:
+- 8 parallel creates with one `Idempotency-Key` made one task; 7 came back with the replay flag. The same key with another body got `422 idempotency_key_reused`.
+- Files before the end return `409 task_not_finished`; after the end, 5 screenshots listed, and the one I downloaded matched its listed size.
+- `max_runtime_seconds: 60` stopped the task at 61 s with `time_limit`.
+- 819 polls on one task from 20 pollers: all 200, p50 321 ms, p99 1261 ms.
+
+Where it broke:
+
+1. **Schema verification passes an answer that breaks the schema.** Schema `{"n": {"type": "integer", "minimum": 10, "maximum": 5}}` (no value can match). The task ended `completed` with output `{"n": 1}` and `verification: {"method": "output_schema", "passed": true}`. The docs say it should end with `passed: false`. Repro: `python run.py tasks --only schema_mismatch`.
+2. **A start URL that does not load still ends `completed`.** The agent wrote `ERR_SOCKS_CONNECTION_FAILED` into `output_text`, status `completed`, `verification.passed: null`, billed $0.0062. A client checking `status` reads this as success.
+3. **The 20-task queue limit did not apply.** I created 23 tasks back to back; all 23 came back `202 queued`, no `429`.
+4. **Cost reads $0 while a task runs.** 15 s into a running task, `usage.cost.total_usd` was 0.0. The final cost after cancel was $0.0056 over 5 model calls. A client cannot enforce its own budget mid-run.
+5. **`moss/fastlane-1` as a task model gave a wrong answer.** Asked for the main heading of example.com, it said the page has "no heading element". The page has `<h1>Example Domain</h1>`, and `moss-fast` returned it on the same goal.
+6. Smaller: `GET /v1/tasks` (not in the docs) returns `200` with an empty body; a `max_cost_usd: 50` cap on a $10 balance gets accepted.
+
+## Findings from the preflight
 
 These come from the no-key preflight. Each one reproduced on every run.
 

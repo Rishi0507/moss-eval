@@ -1,0 +1,2026 @@
+# Results for run `20261125-134920`
+
+Base URL: `https://inference.moss.dev/v1`. Spend: $0.2521.
+
+## Preflight (no key)
+
+401 round trip on /chat/completions: p50 19 ms, p95 98 ms.
+401 round trip on /tasks: p50 409 ms, p95 950 ms.
+
+| credentials, route (body `{"model": ...}` only) | status | message |
+| - | - | - |
+| missing /chat/completions | 401 | Missing bearer token |
+| missing /responses | 400 | input must be a string or a list of items |
+| missing /tasks | 401 | Missing bearer token |
+| no_colon /chat/completions | 401 | Send Bearer project_id:project_key |
+| no_colon /responses | 400 | input must be a string or a list of items |
+| no_colon /tasks | 401 | Send Bearer project_id:project_key |
+| empty_parts /chat/completions | 401 | Send Bearer project_id:project_key |
+| empty_parts /responses | 400 | input must be a string or a list of items |
+| empty_parts /tasks | 401 | Send Bearer project_id:project_key |
+| wrong_pair /chat/completions | 400 | messages is required |
+| wrong_pair /responses | 400 | input must be a string or a list of items |
+| wrong_pair /tasks | 401 | The project credentials were rejected |
+| basic_scheme /chat/completions | 401 | Missing bearer token |
+| basic_scheme /responses | 400 | input must be a string or a list of items |
+| basic_scheme /tasks | 401 | Missing bearer token |
+| lowercase_bearer /chat/completions | 400 | messages is required |
+| lowercase_bearer /responses | 400 | input must be a string or a list of items |
+| lowercase_bearer /tasks | 401 | The project credentials were rejected |
+
+| credentials, route (valid body) | status | message |
+| - | - | - |
+| missing /chat/completions | 401 | Missing bearer token |
+| missing /responses | 401 | Missing bearer token |
+| wrong_pair /chat/completions | 401 | The project credentials were rejected |
+| wrong_pair /responses | 401 | The project credentials were rejected |
+
+## Streaming latency, moss/fastlane-1
+
+| API | ok/n | TTFT p50 | TTFT p95 | TTFT p99 | ITL p50 | ITL p95 | decode tok/s p50 |
+| - | - | - | - | - | - | - | - |
+| chat | 27/30 | 96 ms | 202 ms | 213 ms | 4.7 ms | 92.8 ms | 128 |
+| responses | 30/30 | 99 ms | 197 ms | 204 ms | 0.3 ms | 100.5 ms | 126 |
+
+Non-streaming, 100 max tokens: p50 684 ms, p95 856 ms, p99 901 ms (n=60).
+
+## Concurrency sweep
+
+| in flight | requests | ok | status counts | req/s | out tok/s | TTFT p50 | TTFT p95 |
+| - | - | - | - | - | - | - | - |
+| 1 | 8 | 8 | {'200': 8} | 1.71 | 109 | 62 ms | 66 ms |
+| 4 | 8 | 8 | {'200': 8} | 4.92 | 309 | 360 ms | 482 ms |
+| 16 | 32 | 12 | {'429': 20, '200': 12} | 5.80 | 365 | 1091 ms | 1146 ms |
+| 64 | 128 | 13 | {'429': 115, '200': 13} | 5.23 | 331 | 625 ms | 797 ms |
+
+## Error handling
+
+| case | docs say | got | code | request id |
+| - | - | - | - | - |
+| bad_model | 400 model_not_found | 400 | model_not_found | yes |
+| vendor_name_without_prefix | 400 missing_provider_key | 400 | missing_provider_key | yes |
+| empty_messages | 400 | 400 | invalid_request_error | yes |
+| missing_messages | 400 | 400 | invalid_request_error | yes |
+| bad_role | 400 | 400 | invalid_request_error | yes |
+| temperature_5 | 400 (OpenAI range 0-2) | 400 | invalid_request_error | yes |
+| temperature_neg | 400 | 400 | invalid_request_error | yes |
+| max_tokens_0 | 400 | 400 | invalid_request_error | yes |
+| max_tokens_neg | 400 | 400 | invalid_request_error | yes |
+| max_tokens_huge | 400 or clamp | 400 | context_length_exceeded | yes |
+| n_2 | docs: one choice | 400 | invalid_request_error | yes |
+| tools_not_list | 400 per docs | 400 | invalid_request_error | yes |
+| unknown_field_chat | docs: passed to model | 200 |  | yes |
+| unknown_field_responses | 400 unsupported_parameter | 400 | unsupported_parameter | yes |
+| previous_response_id | 400 unsupported_parameter | 400 | unsupported_parameter | yes |
+| background_true | 400 unsupported_parameter | 400 | unsupported_parameter | yes |
+| responses_empty_input | 400 | 200 |  | yes |
+| web_search_tool | 400 unsupported_parameter | 400 | unsupported_parameter | yes |
+| anthropic_temperature | 400 unsupported_parameter | 400 | unsupported_parameter | yes |
+| openai_seed | 400 unsupported_parameter | 400 | unsupported_parameter | yes |
+| anthropic_temperature_1_is_unset | 200 (1 counts as unset) | 200 |  | yes |
+| too_many_indexes | 400 (33 indexes) | 403 | permission_error | yes |
+| foreign_index | 403 | 403 | permission_error | yes |
+| context_over_262k | 400 context_length_exceeded | 400 | context_length_exceeded | yes |
+| malformed_json | 400 JSON error | 400 | invalid_request_error | yes |
+| body_over_4mb | 413 | 413 | invalid_request_error | yes |
+| wrong_content_type_text | 400 or 415 | 200 |  | yes |
+
+![ttft_cdf.png](ttft_cdf.png)
+
+![concurrency.png](concurrency.png)
+
+## Full results
+
+Every section, as JSON:
+
+```json
+{
+  "run_id": "20261125-134920",
+  "base_url": "https://inference.moss.dev/v1",
+  "started": 1795594760.9168987,
+  "preflight": {
+    "rtt_401_s": {
+      "p50": 0.018862899974919856,
+      "p95": 0.09798953002318755,
+      "n": 19
+    },
+    "rtt_401_tasks_s": {
+      "p50": 0.40911649994086474,
+      "p95": 0.9504871699726213,
+      "n": 19
+    },
+    "models_no_auth": {
+      "status": 200,
+      "count": 19
+    },
+    "models_bad_auth_status": 200,
+    "auth": {
+      "missing /chat/completions": [
+        401,
+        "Missing bearer token"
+      ],
+      "missing /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "missing /tasks": [
+        401,
+        "Missing bearer token"
+      ],
+      "no_colon /chat/completions": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "no_colon /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "no_colon /tasks": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "empty_parts /chat/completions": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "empty_parts /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "empty_parts /tasks": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "wrong_pair /chat/completions": [
+        400,
+        "messages is required"
+      ],
+      "wrong_pair /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "wrong_pair /tasks": [
+        401,
+        "The project credentials were rejected"
+      ],
+      "basic_scheme /chat/completions": [
+        401,
+        "Missing bearer token"
+      ],
+      "basic_scheme /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "basic_scheme /tasks": [
+        401,
+        "Missing bearer token"
+      ],
+      "lowercase_bearer /chat/completions": [
+        400,
+        "messages is required"
+      ],
+      "lowercase_bearer /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "lowercase_bearer /tasks": [
+        401,
+        "The project credentials were rejected"
+      ]
+    },
+    "auth_valid_body": {
+      "missing /chat/completions": [
+        401,
+        "Missing bearer token"
+      ],
+      "missing /responses": [
+        401,
+        "Missing bearer token"
+      ],
+      "wrong_pair /chat/completions": [
+        401,
+        "The project credentials were rejected"
+      ],
+      "wrong_pair /responses": [
+        401,
+        "The project credentials were rejected"
+      ]
+    },
+    "malformed_json_no_auth": 401,
+    "get_with_body /tasks": [
+      400,
+      "text/html; charset=UTF-8"
+    ],
+    "get_with_body /models": [
+      400,
+      "text/html; charset=UTF-8"
+    ],
+    "get_with_body /nope": [
+      400,
+      "text/html; charset=UTF-8"
+    ],
+    "unknown_route": [
+      404,
+      null
+    ],
+    "cors_preflight": [
+      200,
+      {
+        "access-control-allow-headers": "authorization,content-type,x-moss-indexes",
+        "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT, QUERY",
+        "access-control-allow-origin": "*",
+        "access-control-max-age": "7200"
+      }
+    ],
+    "base_url": "https://inference.moss.dev/v1"
+  },
+  "inference": {
+    "models": {
+      "status": 200,
+      "count": 19,
+      "missing_vs_docs": [],
+      "extra_vs_docs": [],
+      "ratelimit_headers": {}
+    },
+    "basic": {
+      "chat": {
+        "status": 200,
+        "object": "chat.completion",
+        "model": "moss/fastlane-1",
+        "n_choices": 1,
+        "finish": "stop",
+        "usage": {
+          "prompt_tokens": 113,
+          "completion_tokens": 74,
+          "total_tokens": 187,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "headers": {
+          "x-moss-box": "g2a0e48",
+          "x-moss-request-id": "111b19af0e374f55a6e3e90bfb53d09c",
+          "x-moss-retrieve-ms": "0.0",
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "10",
+          "x-ratelimit-remaining-tokens": "600000",
+          "x-ratelimit-reset-requests": "0s",
+          "x-ratelimit-reset-tokens": "0s"
+        }
+      },
+      "responses": {
+        "status": 200,
+        "object": "response",
+        "model": "moss/fastlane-1",
+        "status_field": "completed",
+        "usage": {
+          "total_tokens": 181,
+          "input_tokens": 113,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens": 68,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "has_output_text_item": true
+      },
+      "alias_moss_model": [
+        200,
+        "moss/fastlane-1"
+      ],
+      "no_model_field": [
+        200,
+        "moss/fastlane-1"
+      ]
+    },
+    "openai_sdk": {
+      "models_list": 19,
+      "chat_text_ok": true,
+      "responses_output_text_ok": true,
+      "chat_stream_chunks": 24,
+      "chat_stream_usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 114,
+        "total_tokens": 154,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": null,
+          "audio_tokens": null,
+          "reasoning_tokens": 0,
+          "rejected_prediction_tokens": null,
+          "text_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "image_tokens": null,
+          "text_tokens": null
+        }
+      },
+      "exception": "RuntimeError: Didn't receive a `response.completed` event."
+    },
+    "errors": {
+      "bad_model": {
+        "expected": "400 model_not_found",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "model_not_found",
+        "message": "Unknown model moss/not-a-model. Send model moss/fastlane-1, or a vendor model name with your own key in X-Moss-Provider-Key.",
+        "request_id": "259d14c824df4921b29b36967b80f052",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.19
+      },
+      "vendor_name_without_prefix": {
+        "expected": "400 missing_provider_key",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "missing_provider_key",
+        "message": "Model gpt-6-luna runs on your own openai key. Send the key in the X-Moss-Provider-Key header, or send model moss/fastlane-1.",
+        "request_id": "1d448d5711944aedbe558c2ac60af491",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.177
+      },
+      "empty_messages": {
+        "expected": "400",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "messages is required",
+        "request_id": "8a0812c093324b738ec186411bd88827",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.025
+      },
+      "missing_messages": {
+        "expected": "400",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "messages is required",
+        "request_id": "ba4c70fe47c24ccbae6f77df96ce88d5",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.177
+      },
+      "bad_role": {
+        "expected": "400",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "messages[0].role must be one of system, developer, user, assistant, tool, function",
+        "request_id": "31f6d39c708e481d8a402408a7746b4c",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.019
+      },
+      "temperature_5": {
+        "expected": "400 (OpenAI range 0-2)",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "temperature must be in [0, 2], got 5.0. (parameter=temperature, value=5.0)",
+        "request_id": "e0ca9b33f91948da8a461aa66e327932",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.025
+      },
+      "temperature_neg": {
+        "expected": "400",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "temperature must be non-negative, got -1.0. (parameter=temperature, value=-1.0)",
+        "request_id": "3c17d69651bd4e7e934ba928028ecee9",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.022
+      },
+      "max_tokens_0": {
+        "expected": "400",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "max_tokens must be at least 1, got 0. (parameter=max_tokens, value=0)",
+        "request_id": "b772fe7a17a44fd8a2229e88e83112e8",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.022
+      },
+      "max_tokens_neg": {
+        "expected": "400",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "max_tokens must be at least 1, got -5. (parameter=max_tokens, value=-5)",
+        "request_id": "d78f83182bb24a34a6b9d3c57a8ada8e",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.028
+      },
+      "max_tokens_huge": {
+        "expected": "400 or clamp",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "context_length_exceeded",
+        "message": "max_tokens=10000000 cannot be greater than max_model_len=262144. Please request fewer output tokens. (parameter=max_tokens, value=10000000)",
+        "request_id": "ce8f1cd42226440eb4000a831351bc95",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.021
+      },
+      "n_2": {
+        "expected": "docs: one choice",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "n must be 1. This endpoint returns one choice.",
+        "request_id": "d694af1d52ff4f52b96dc6f6a5cb5ce8",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.018
+      },
+      "tools_not_list": {
+        "expected": "400 per docs",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "tools must be a list",
+        "request_id": "8e2cb9876e544841b8a82645b267314f",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.019
+      },
+      "unknown_field_chat": {
+        "expected": "docs: passed to model",
+        "status": 200,
+        "type": null,
+        "code": null,
+        "message": null,
+        "request_id": "73b0f13bb2374beaadb458703bbaaadc",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.124,
+        "usage": {
+          "prompt_tokens": 88,
+          "completion_tokens": 5,
+          "total_tokens": 93,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "n_choices": 1
+      },
+      "unknown_field_responses": {
+        "expected": "400 unsupported_parameter",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "unsupported_parameter",
+        "message": "frobnicate is not supported",
+        "request_id": "fd232e0a230446d5a0da3a34dd9d5292",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.1
+      },
+      "previous_response_id": {
+        "expected": "400 unsupported_parameter",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "unsupported_parameter",
+        "message": "previous_response_id is not supported. Send the whole conversation in input.",
+        "request_id": "5f3d85d585c8403a86823b18dea7a61b",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.102
+      },
+      "background_true": {
+        "expected": "400 unsupported_parameter",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "unsupported_parameter",
+        "message": "background true is not supported",
+        "request_id": "b631f9feff3e4ee2b86ab2d27a65a3f4",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.022
+      },
+      "responses_empty_input": {
+        "expected": "400",
+        "status": 200,
+        "type": null,
+        "code": null,
+        "message": null,
+        "request_id": "2fce5e3f11d04a8b9bb92a0c27de880d",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.284,
+        "usage": {
+          "total_tokens": 114,
+          "input_tokens": 87,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens": 27,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "n_choices": 0
+      },
+      "web_search_tool": {
+        "expected": "400 unsupported_parameter",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "unsupported_parameter",
+        "message": "tools[0] of type web_search is not supported",
+        "request_id": "325d9aeee8e0484fa1cce36f155deef1",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.092
+      },
+      "anthropic_temperature": {
+        "expected": "400 unsupported_parameter",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "unsupported_parameter",
+        "message": "temperature is not supported for model anthropic/claude-haiku-5.5. Remove it from the request.",
+        "request_id": "dd7f57191d744d679a0c89241a4f41cb",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.014
+      },
+      "openai_seed": {
+        "expected": "400 unsupported_parameter",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "unsupported_parameter",
+        "message": "seed is not supported for model openai/gpt-6-luna. Remove it from the request.",
+        "request_id": "5c32949a1aaf4de6b8ed1d4cb3481709",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.015
+      },
+      "anthropic_temperature_1_is_unset": {
+        "expected": "200 (1 counts as unset)",
+        "status": 200,
+        "type": null,
+        "code": null,
+        "message": null,
+        "request_id": "2eafc54ff2ca4e69aa3064817701eff9",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 2.016,
+        "usage": {
+          "prompt_tokens": 29,
+          "completion_tokens": 5,
+          "total_tokens": 34,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "n_choices": 1
+      },
+      "too_many_indexes": {
+        "expected": "400 (33 indexes)",
+        "status": 403,
+        "type": "permission_error",
+        "code": "permission_error",
+        "message": "X-Moss-Indexes names an index outside this project",
+        "request_id": "9f33be8e811a43a9aa13c98549b3b18b",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.92
+      },
+      "foreign_index": {
+        "expected": "403",
+        "status": 403,
+        "type": "permission_error",
+        "code": "permission_error",
+        "message": "X-Moss-Indexes names an index outside this project",
+        "request_id": "e740ef1480544bf295533ac8c6dda7c6",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.409
+      },
+      "context_over_262k": {
+        "expected": "400 context_length_exceeded",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "context_length_exceeded",
+        "message": "This request has about 420097 prompt tokens. The limit is 262144.",
+        "request_id": "e1ed8d2856cc4b4ab530c0e132faec08",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.296
+      },
+      "malformed_json": {
+        "expected": "400 JSON error",
+        "status": 400,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "Request body must be JSON",
+        "request_id": "b1836bb1fd0b46738c352730d91efb3f",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.021
+      },
+      "body_over_4mb": {
+        "expected": "413",
+        "status": 413,
+        "type": "invalid_request_error",
+        "code": "invalid_request_error",
+        "message": "The request body is larger than 4194304 bytes",
+        "request_id": "8331a8bfb42f43cdbc94b8b09967cc15",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.087
+      },
+      "wrong_content_type_text": {
+        "expected": "400 or 415",
+        "status": 200,
+        "type": null,
+        "code": null,
+        "message": null,
+        "request_id": "05ff1c4df4b445a0882dad92f007c6da",
+        "should_retry": null,
+        "retry_after": null,
+        "latency_s": 0.269
+      }
+    },
+    "limits_semantics": {
+      "max_tokens_5": {
+        "completion_tokens": 5,
+        "finish_reason": "length"
+      },
+      "responses_max_output_5_last_event": "response.incomplete",
+      "stop_7": {
+        "status": 200,
+        "text": "1, 2, 3, 4, 5, 6, ",
+        "contains_7": false
+      },
+      "min_prompt_tokens": {
+        "project_prompt_on": 88,
+        "project_prompt_off": 88
+      }
+    },
+    "usage_consistency": [
+      {
+        "mode": "plain",
+        "prompt_tokens": 99,
+        "completion_tokens": 89,
+        "total_tokens": 188,
+        "sum_ok": true,
+        "o200k_output_tokens": 88,
+        "o200k_prompt_text_tokens": 12
+      },
+      {
+        "mode": "stream",
+        "prompt_tokens": 99,
+        "completion_tokens": 89,
+        "total_tokens": 188,
+        "sum_ok": true,
+        "o200k_output_tokens": 88,
+        "o200k_prompt_text_tokens": 12
+      }
+    ],
+    "determinism": {
+      "temp0": {
+        "unique_outputs": 1,
+        "n": 5,
+        "samples": [
+          "The vast, deep blue ocean covers more than seventy percent of the Earth's surface, teeming with life and shaping our planet's climate."
+        ]
+      },
+      "temp0_seed42": {
+        "unique_outputs": 1,
+        "n": 5,
+        "samples": [
+          "The vast, deep blue ocean covers more than seventy percent of the Earth's surface, teeming with life and shaping our planet's climate."
+        ]
+      },
+      "temp1_seed42": {
+        "unique_outputs": 1,
+        "n": 5,
+        "samples": [
+          "The vast, deep blue ocean covers more than seventy percent of the Earth's surface, teeming with diverse marine life and regulating the planet's climate."
+        ]
+      }
+    },
+    "tools_json": {
+      "tool_call": {
+        "status": 200,
+        "finish_reason": "tool_calls",
+        "n_calls": 1,
+        "args_valid": true
+      },
+      "tool_roundtrip": {
+        "status": 200,
+        "uses_29": true
+      },
+      "tool_choice_required": {
+        "status": 200,
+        "finish_reason": "tool_calls",
+        "n_calls": 1
+      },
+      "responses_tool_stream_events": [
+        "response.completed",
+        "response.created",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.output_item.done"
+      ],
+      "json_schema_valid": "5/5",
+      "json_object_status": 200
+    },
+    "caches": {
+      "reply_cache": {
+        "first": [
+          0.20628250006120652,
+          {
+            "prompt_tokens": 103,
+            "completion_tokens": 4,
+            "total_tokens": 107,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "cache_write_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ],
+        "second": [
+          0.19962019997183233,
+          {
+            "prompt_tokens": 0,
+            "completion_tokens": 1,
+            "total_tokens": 1,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "cache_write_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ],
+        "same_text": true
+      },
+      "prefix_cache": [
+        {
+          "ttft_s": 0.44931149994954467,
+          "prompt_tokens": 6890,
+          "cached": 0
+        },
+        {
+          "ttft_s": 0.10889490006957203,
+          "prompt_tokens": 6891,
+          "cached": 6400
+        },
+        {
+          "ttft_s": null,
+          "prompt_tokens": null,
+          "cached": null
+        },
+        {
+          "ttft_s": null,
+          "prompt_tokens": null,
+          "cached": null
+        },
+        {
+          "ttft_s": null,
+          "prompt_tokens": null,
+          "cached": null
+        },
+        {
+          "ttft_s": 0.13964730000589043,
+          "prompt_tokens": 6893,
+          "cached": 6400
+        }
+      ]
+    },
+    "stream_latency": {
+      "chat": {
+        "ok": 27,
+        "n": 30,
+        "ttft_s": {
+          "n": 27,
+          "p50": 0.09592250001151115,
+          "p95": 0.20160057005705312,
+          "p99": 0.2126561719737947,
+          "min": 0.060019800090231,
+          "max": 0.21518019994255155
+        },
+        "ttfb_s": {
+          "n": 27,
+          "p50": 0.0955164999468252,
+          "p95": 0.20114593006437642,
+          "p99": 0.21202736399602143,
+          "min": 0.059645700035616755,
+          "max": 0.21448009996674955
+        },
+        "itl_ms": {
+          "n": 910,
+          "p50": 4.677449993323535,
+          "p95": 92.8440599993337,
+          "p99": 130.27278797118902,
+          "min": 0.11020002420991659,
+          "max": 294.28719996940345
+        },
+        "decode_tok_s": {
+          "n": 27,
+          "p50": 127.64918189427813,
+          "p95": 170.10029085645775,
+          "p99": 203.84522110152867,
+          "min": 104.03755785702204,
+          "max": 215.58845791534284
+        },
+        "total_s": {
+          "n": 27,
+          "p50": 0.6829139000037685,
+          "p95": 0.8095954099670052,
+          "p99": 0.8330675799772143,
+          "min": 0.49680459999945015,
+          "max": 0.8386424999916926
+        },
+        "usage_missing": 0,
+        "events_per_out_token": 0.4807593637762955
+      },
+      "responses": {
+        "ok": 30,
+        "n": 30,
+        "ttft_s": {
+          "n": 30,
+          "p50": 0.09905350004555658,
+          "p95": 0.19666812993818894,
+          "p99": 0.20385939597385005,
+          "min": 0.06438670004718006,
+          "max": 0.2056624999968335
+        },
+        "ttfb_s": {
+          "n": 30,
+          "p50": 0.09830605000024661,
+          "p95": 0.19594619496492668,
+          "p99": 0.20313674602541143,
+          "min": 0.06366039998829365,
+          "max": 0.2049384000711143
+        },
+        "itl_ms": {
+          "n": 1002,
+          "p50": 0.31620002118870616,
+          "p95": 100.52212004666217,
+          "p99": 153.15162707120183,
+          "min": 0.11829996947199106,
+          "max": 206.78470004349947
+        },
+        "decode_tok_s": {
+          "n": 30,
+          "p50": 126.08012672212939,
+          "p95": 146.55236574853137,
+          "p99": 169.65059447766794,
+          "min": 104.70781490837807,
+          "max": 176.80278678852898
+        },
+        "total_s": {
+          "n": 30,
+          "p50": 0.7041132499580272,
+          "p95": 0.8184426499879919,
+          "p99": 0.8260911970282905,
+          "min": 0.5060299000469968,
+          "max": 0.827257200027816
+        },
+        "usage_missing": 0,
+        "events_per_out_token": 0.4867924528301887
+      }
+    },
+    "nonstream_latency": {
+      "latency_s": {
+        "n": 60,
+        "p50": 0.6836288499762304,
+        "p95": 0.8563578599598258,
+        "p99": 0.9010632029746193,
+        "min": 0.4637032999889925,
+        "max": 0.9024663999443874
+      },
+      "completion_tokens_mean": 68.66666666666667
+    },
+    "vendor_compare": {
+      "anthropic/claude-haiku-5.5": {
+        "ok": 5,
+        "ttft_s": {
+          "n": 5,
+          "p50": 0.6189943000208586,
+          "p95": 0.7330979800084606,
+          "p99": 0.7486752760084345,
+          "min": 0.6008406999753788,
+          "max": 0.7525696000084281
+        },
+        "errors": []
+      },
+      "openai/gpt-6-luna": {
+        "ok": 5,
+        "ttft_s": {
+          "n": 5,
+          "p50": 1.139385599992238,
+          "p95": 2.7479091199580576,
+          "p99": 3.0377003039512784,
+          "min": 1.0126675999490544,
+          "max": 3.1101480999495834
+        },
+        "errors": []
+      },
+      "moss/fastlane-1": {
+        "ok": 5,
+        "ttft_s": {
+          "n": 5,
+          "p50": 0.06607300008181483,
+          "p95": 0.10202838005498051,
+          "p99": 0.1071183960698545,
+          "min": 0.06174739997368306,
+          "max": 0.108390900073573
+        },
+        "errors": []
+      }
+    },
+    "stream_abort": {
+      "aborted_after_events": 3,
+      "next_call_status": 200
+    },
+    "concurrency": {
+      "1": {
+        "requests": 8,
+        "ok": 8,
+        "status_counts": {
+          "200": 8
+        },
+        "wall_s": 4.685977399931289,
+        "req_per_s": 1.7072212085609513,
+        "out_tok_per_s": 109.04875469683077,
+        "ttft_s": {
+          "n": 8,
+          "p50": 0.06186030001845211,
+          "p95": 0.06637079998035915,
+          "p99": 0.06747847997234203,
+          "min": 0.059634100063703954,
+          "max": 0.06775539997033775
+        },
+        "retry_after": []
+      },
+      "4": {
+        "requests": 8,
+        "ok": 8,
+        "status_counts": {
+          "200": 8
+        },
+        "wall_s": 1.6268943001050502,
+        "req_per_s": 4.9173446606109765,
+        "out_tok_per_s": 309.17804553591515,
+        "ttft_s": {
+          "n": 8,
+          "p50": 0.3599835999775678,
+          "p95": 0.48151715999701994,
+          "p99": 0.4816589519684203,
+          "min": 0.17882809997536242,
+          "max": 0.4816943999612704
+        },
+        "retry_after": []
+      },
+      "16": {
+        "requests": 32,
+        "ok": 12,
+        "status_counts": {
+          "429": 20,
+          "200": 12
+        },
+        "wall_s": 2.068399399984628,
+        "req_per_s": 5.801587449739728,
+        "out_tok_per_s": 364.5330780919795,
+        "ttft_s": {
+          "n": 12,
+          "p50": 1.091067600005772,
+          "p95": 1.1462747650104574,
+          "p99": 1.1517975130095146,
+          "min": 0.49590249999891967,
+          "max": 1.153178200009279
+        },
+        "retry_after": [
+          "1"
+        ]
+      },
+      "64": {
+        "requests": 128,
+        "ok": 13,
+        "status_counts": {
+          "429": 115,
+          "200": 13
+        },
+        "wall_s": 2.485571000026539,
+        "req_per_s": 5.230186544605322,
+        "out_tok_per_s": 330.70871843581347,
+        "ttft_s": {
+          "n": 13,
+          "p50": 0.624869899940677,
+          "p95": 0.7967416400089862,
+          "p99": 0.9769920079596344,
+          "min": 0.35505160002503544,
+          "max": 1.022054599947296
+        },
+        "retry_after": [
+          "1"
+        ]
+      }
+    },
+    "rate_limit": {
+      "status_counts": {
+        "200": 10,
+        "429": 5
+      },
+      "headers_in_order": [
+        {
+          "retry-after": "1",
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "0",
+          "x-ratelimit-remaining-tokens": "599270",
+          "x-ratelimit-reset-requests": "5s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "retry-after": "1",
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "0",
+          "x-ratelimit-remaining-tokens": "599313",
+          "x-ratelimit-reset-requests": "5s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "retry-after": "1",
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "0",
+          "x-ratelimit-remaining-tokens": "599319",
+          "x-ratelimit-reset-requests": "5s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "retry-after": "1",
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "0",
+          "x-ratelimit-remaining-tokens": "599333",
+          "x-ratelimit-reset-requests": "5s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "retry-after": "1",
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "0",
+          "x-ratelimit-remaining-tokens": "599324",
+          "x-ratelimit-reset-requests": "5s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "8",
+          "x-ratelimit-remaining-tokens": "599886",
+          "x-ratelimit-reset-requests": "1s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "9",
+          "x-ratelimit-remaining-tokens": "599884",
+          "x-ratelimit-reset-requests": "1s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "7",
+          "x-ratelimit-remaining-tokens": "599886",
+          "x-ratelimit-reset-requests": "2s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "5",
+          "x-ratelimit-remaining-tokens": "599672",
+          "x-ratelimit-reset-requests": "3s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "2",
+          "x-ratelimit-remaining-tokens": "599328",
+          "x-ratelimit-reset-requests": "4s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "6",
+          "x-ratelimit-remaining-tokens": "599778",
+          "x-ratelimit-reset-requests": "2s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "3",
+          "x-ratelimit-remaining-tokens": "599441",
+          "x-ratelimit-reset-requests": "4s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "4",
+          "x-ratelimit-remaining-tokens": "599556",
+          "x-ratelimit-reset-requests": "3s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "0",
+          "x-ratelimit-remaining-tokens": "599220",
+          "x-ratelimit-reset-requests": "5s",
+          "x-ratelimit-reset-tokens": "1s"
+        },
+        {
+          "x-ratelimit-limit-requests": "120",
+          "x-ratelimit-limit-tokens": "600000",
+          "x-ratelimit-remaining-requests": "1",
+          "x-ratelimit-remaining-tokens": "599326",
+          "x-ratelimit-reset-requests": "5s",
+          "x-ratelimit-reset-tokens": "1s"
+        }
+      ],
+      "sample_429": [
+        {
+          "status": 429,
+          "type": "requests",
+          "code": "rate_limit_exceeded",
+          "message": "Rate limit reached for project <MOSS_PROJECT_ID>: too many requests per minute. Please try again in 1s.",
+          "request_id": "ba3572838a484142bafc41fc4663d105",
+          "should_retry": null,
+          "retry_after": "1"
+        },
+        {
+          "status": 429,
+          "type": "requests",
+          "code": "rate_limit_exceeded",
+          "message": "Rate limit reached for project <MOSS_PROJECT_ID>: too many requests per minute. Please try again in 1s.",
+          "request_id": "c7b700f1ca0d492084ff6b70f70644d5",
+          "should_retry": null,
+          "retry_after": "1"
+        }
+      ]
+    }
+  },
+  "tasks": {
+    "routes": {
+      "get_unknown": {
+        "status": 404,
+        "code": "not_found_error",
+        "type": "not_found_error",
+        "message": "No task with this id in this project"
+      },
+      "get_malformed_id": {
+        "status": 404,
+        "code": "not_found_error",
+        "type": "not_found_error",
+        "message": "No task with this id in this project"
+      },
+      "cancel_unknown": {
+        "status": 404,
+        "code": "not_found_error",
+        "type": "not_found_error",
+        "message": "No task with this id in this project"
+      },
+      "files_unknown": {
+        "status": 404,
+        "code": "not_found_error",
+        "type": "not_found_error",
+        "message": "No task with this id in this project"
+      },
+      "list_tasks_undocumented": {
+        "status": 200,
+        "code": null,
+        "type": null,
+        "message": ""
+      },
+      "path_traversal_file": {
+        "status": 404,
+        "code": "not_found_error",
+        "type": "not_found_error",
+        "message": "No task with this id in this project"
+      }
+    },
+    "validation": {
+      "missing_goal": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "goal must be text of 1 to 20000 characters"
+      },
+      "empty_goal": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "goal must be text of 1 to 20000 characters"
+      },
+      "goal_20001_chars": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "goal must be text of 1 to 20000 characters"
+      },
+      "missing_environment": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "environment must be {\"type\": \"browser\"}; v0 runs browser tasks only"
+      },
+      "env_type_desktop": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "environment must be {\"type\": \"browser\"}; v0 runs browser tasks only"
+      },
+      "start_url_ftp": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "environment.start_url must be an http or https URL, or a host such as example.com"
+      },
+      "start_url_javascript": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "environment.start_url must be an http or https URL, or a host such as example.com"
+      },
+      "start_url_not_a_url": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "environment.start_url must be an http or https URL, or a host such as example.com"
+      },
+      "runtime_59": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "limits.max_runtime_seconds must be a number from 60 to 7200"
+      },
+      "runtime_7201": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "limits.max_runtime_seconds must be a number from 60 to 7200"
+      },
+      "runtime_string": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "limits.max_runtime_seconds must be a number from 60 to 7200"
+      },
+      "runtime_float": {
+        "status": 202,
+        "code": null,
+        "type": null,
+        "message": "",
+        "CREATED_TASK": "task_66f8b2fea1194c89963531bd3cf183b6"
+      },
+      "cost_0_009": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "limits.max_cost_usd must be a number from 0.01 to 50"
+      },
+      "cost_50_01": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "limits.max_cost_usd must be a number from 0.01 to 50"
+      },
+      "cost_negative": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "limits.max_cost_usd must be a number from 0.01 to 50"
+      },
+      "limits_unknown_key": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "limits takes max_runtime_seconds and max_cost_usd"
+      },
+      "effort_max": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "effort must be low, medium or high"
+      },
+      "model_unknown": {
+        "status": 400,
+        "code": "model_not_found",
+        "type": "invalid_request_error",
+        "message": "model must be a Moss tier or a Moss catalog model that tasks serve: moss-advanced, moss-balanced, moss-balanced-handoff, moss-fast, moss-fast-beta, anthropic/claude-fable-5.1, anthropic/claude-haiku-5"
+      },
+      "schema_type_array": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "output_schema must describe one JSON object: its \"type\" must be \"object\". For a list, put it in a property, such as {\"type\": \"object\", \"properties\": {\"items\": {\"type\": \"array\"}}}"
+      },
+      "schema_over_20000_bytes": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "output_schema must be a JSON Schema object under 20000 bytes"
+      },
+      "schema_invalid_jsonschema": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "output_schema.properties.a.type must be one of object, array, string, boolean, null, integer, number, or a list of them"
+      },
+      "metadata_over_4000_bytes": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "metadata must be an object under 4000 bytes"
+      },
+      "metadata_list": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "metadata must be an object under 4000 bytes"
+      },
+      "unknown_top_field": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "Unknown field priority"
+      },
+      "malformed_json": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "The body must be JSON, without NaN, Infinity or numbers too big for a float"
+      },
+      "body_over_256KiB": {
+        "status": 413,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "The request body is larger than 262144 bytes"
+      },
+      "idem_key_256_chars": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "Idempotency-Key must be 1 to 255 visible ASCII characters"
+      },
+      "idem_key_space": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "Idempotency-Key must be 1 to 255 visible ASCII characters"
+      },
+      "idem_key_non_ascii": {
+        "client_side_error": "UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-3: ordinal not in range(128)"
+      },
+      "idem_key_empty": {
+        "status": 400,
+        "code": "invalid_request_error",
+        "type": "invalid_request_error",
+        "message": "Idempotency-Key must be 1 to 255 visible ASCII characters"
+      }
+    },
+    "lifecycle": {
+      "moss-fast": {
+        "create_status": 202,
+        "create_latency_s": 0.416,
+        "initial_status": "queued",
+        "status_first_seen_s": {
+          "running": 0.31,
+          "completed": 30.84
+        },
+        "files_before_finish": {
+          "status": 409,
+          "code": "task_not_finished",
+          "type": "invalid_request_error",
+          "message": "The task's files are served once it has finished"
+        },
+        "files_after": {
+          "status": 200,
+          "count": 5,
+          "sample": [
+            {
+              "path": "screenshots/agent/ses_dee2d989fffeCpNAf6I1JhrOGt-1795595349129-000.png",
+              "bytes": 290288
+            },
+            {
+              "path": "screenshots/runner/00001-step-4.png",
+              "bytes": 290288
+            },
+            {
+              "path": "screenshots/runner/00002-step-6.png",
+              "bytes": 290288
+            },
+            {
+              "path": "screenshots/runner/00003-step-8.png",
+              "bytes": 290288
+            },
+            {
+              "path": "screenshots/runner/00004-step-10.png",
+              "bytes": 290288
+            }
+          ]
+        },
+        "download": {
+          "path": "screenshots/agent/ses_dee2d989fffeCpNAf6I1JhrOGt-1795595349129-000.png",
+          "status": 200,
+          "content_type": "image/png",
+          "bytes_listed": 290288,
+          "content_length": "290288"
+        },
+        "final": {
+          "status": "completed",
+          "error": null,
+          "result": {
+            "output": {
+              "heading": "Example Domain"
+            },
+            "output_text": "{\"heading\":\"Example Domain\"}"
+          },
+          "verification": {
+            "method": "output_schema",
+            "passed": true
+          },
+          "cost": {
+            "model_usd": 0.005875,
+            "total_usd": 0.006208,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 6,
+          "model_calls": 7,
+          "browser_seconds": 29,
+          "created_at": "2026-11-25T08:28:46.952229+00:00",
+          "started_at": "2026-11-25T08:28:46.971352+00:00",
+          "finished_at": "2026-11-25T08:29:17.021075+00:00"
+        },
+        "echo_metadata": {
+          "case": "lifecycle",
+          "suite": "moss-eval"
+        },
+        "cancel_after_finish": "completed"
+      },
+      "moss-balanced": {
+        "create_status": 202,
+        "create_latency_s": 0.335,
+        "initial_status": "queued",
+        "status_first_seen_s": {
+          "running": 0.3,
+          "completed": 33.57
+        },
+        "files_before_finish": {
+          "status": 409,
+          "code": "task_not_finished",
+          "type": "invalid_request_error",
+          "message": "The task's files are served once it has finished"
+        },
+        "files_after": {
+          "status": 200,
+          "count": 5,
+          "sample": [
+            {
+              "path": "screenshots/agent/ses_dee2d1bbbffet6d4LO0uYjODOE-1795595370416-000.png",
+              "bytes": 72683
+            },
+            {
+              "path": "screenshots/agent/ses_dee2d1bbbffet6d4LO0uYjODOE-1795595388729-000.png",
+              "bytes": 72683
+            },
+            {
+              "path": "screenshots/runner/00001-step-3.png",
+              "bytes": 72683
+            },
+            {
+              "path": "screenshots/runner/00002-step-5.png",
+              "bytes": 72683
+            },
+            {
+              "path": "screenshots/runner/00003-step-7.png",
+              "bytes": 72683
+            }
+          ]
+        },
+        "download": {
+          "path": "screenshots/agent/ses_dee2d1bbbffet6d4LO0uYjODOE-1795595370416-000.png",
+          "status": 200,
+          "content_type": "image/png",
+          "bytes_listed": 72683,
+          "content_length": "72683"
+        },
+        "final": {
+          "status": "completed",
+          "error": null,
+          "result": {
+            "output": {
+              "heading": "not shown"
+            },
+            "output_text": "{\"heading\":\"not shown\"}"
+          },
+          "verification": {
+            "method": "output_schema",
+            "passed": true
+          },
+          "cost": {
+            "model_usd": 0.069606,
+            "total_usd": 0.069939,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 5,
+          "model_calls": 6,
+          "browser_seconds": 32,
+          "created_at": "2026-11-25T08:29:20.100426+00:00",
+          "started_at": "2026-11-25T08:29:20.116714+00:00",
+          "finished_at": "2026-11-25T08:29:52.964028+00:00"
+        },
+        "echo_metadata": {
+          "case": "lifecycle",
+          "suite": "moss-eval"
+        },
+        "cancel_after_finish": "completed"
+      }
+    },
+    "schema_mismatch": {
+      "create_status": 202,
+      "final": {
+        "status": "completed",
+        "error": null,
+        "result": {
+          "output": {
+            "n": 1
+          },
+          "output_text": "{\"n\":1}"
+        },
+        "verification": {
+          "method": "output_schema",
+          "passed": true
+        },
+        "cost": {
+          "model_usd": 0.006321,
+          "total_usd": 0.006654,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        "steps": 2,
+        "model_calls": 3,
+        "browser_seconds": 21,
+        "created_at": "2026-11-25T08:29:55.741294+00:00",
+        "started_at": "2026-11-25T08:29:55.758824+00:00",
+        "finished_at": "2026-11-25T08:30:16.892378+00:00"
+      },
+      "seen": {
+        "running": 0.49,
+        "completed": 21.57
+      }
+    },
+    "idempotency": {
+      "sequential": {
+        "first": [
+          202,
+          "task_fa9b3284b8164480930caf9e87b3043b"
+        ],
+        "replay": [
+          202,
+          "task_fa9b3284b8164480930caf9e87b3043b",
+          "true"
+        ],
+        "same_task": true,
+        "reordered_keys": [
+          202,
+          true,
+          null
+        ],
+        "other_body": {
+          "status": 422,
+          "code": "idempotency_key_reused",
+          "type": "invalid_request_error",
+          "message": "This Idempotency-Key was sent with another body. Send a new key for a new task"
+        }
+      },
+      "race_8_parallel_same_key": {
+        "statuses": [
+          202,
+          202,
+          202,
+          202,
+          202,
+          202,
+          202,
+          202
+        ],
+        "distinct_task_ids": 1,
+        "replayed_flags": [
+          null,
+          "true",
+          "true",
+          "true",
+          "true",
+          "true",
+          "true",
+          "true"
+        ],
+        "errors": []
+      },
+      "no_key_duplicate_creates_two": true
+    },
+    "cancel": {
+      "immediate": {
+        "status_at_create": "queued",
+        "cancel_resp_status": "running",
+        "cancel_requested": true,
+        "second_cancel_http": 200,
+        "final": {
+          "status": "cancelled",
+          "error": null,
+          "result": null,
+          "verification": null,
+          "cost": {
+            "model_usd": 0.0,
+            "total_usd": 0.000333,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 0,
+          "model_calls": 0,
+          "browser_seconds": 2,
+          "created_at": "2026-11-25T08:30:24.619113+00:00",
+          "started_at": "2026-11-25T08:30:24.636074+00:00",
+          "finished_at": "2026-11-25T08:30:27.428079+00:00"
+        }
+      },
+      "running": {
+        "status_before": "running",
+        "cost_before": {
+          "model_usd": 0.0,
+          "total_usd": 0.0,
+          "browser_usd": null,
+          "traffic_usd": null
+        },
+        "cancel_http": 200,
+        "cancel_requested": true,
+        "seconds_to_cancelled": 24.6,
+        "seen": {
+          "running": 0.35,
+          "cancelled": 2.96
+        },
+        "final": {
+          "status": "cancelled",
+          "error": null,
+          "result": null,
+          "verification": null,
+          "cost": {
+            "model_usd": 0.005261,
+            "total_usd": 0.005594,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 0,
+          "model_calls": 5,
+          "browser_seconds": 18,
+          "created_at": "2026-11-25T08:30:31.162757+00:00",
+          "started_at": "2026-11-25T08:30:31.172928+00:00",
+          "finished_at": "2026-11-25T08:30:49.960900+00:00"
+        },
+        "cost_20s_later": {
+          "model_usd": 0.005261,
+          "total_usd": 0.005594,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        "result_after_cancel": null
+      }
+    },
+    "limits": {
+      "budget_0_01": {
+        "final": {
+          "status": "completed",
+          "error": null,
+          "result": {
+            "output": null,
+            "output_text": "1. Football at the 2012 Summer Olympics \u2013 Men's Asian Qualifiers Playoff Round\n2. Kapulo mine\n3. Provocation test\n4. Bhadav Hansdah\n5. Parliament in the Making\n6. List of teams and cyclists in the 1995 Vuelta a Espa\u00f1a\n7. Both Members of This Club\n8. Oakland City, Indiana\n9. Samson and the Seven Miracles of the World\n10. Alpiscorpius beta\n11. The Auto Moto\n12. Gustaf \u00c5kerman\n13. Lev Durov\n14. Mohsenabad, Gilan\n15. Yatim\n16. Za trochu l\u00e1sky...\n17. Elizabeth Barrett Browning\n18. Milwaukee Hospital\n19. Sailing at the 1988 Summer Olympics \u2013 Soling\n20. Khurshid Begum Saeed"
+          },
+          "verification": {
+            "method": "agent_reported",
+            "passed": null
+          },
+          "cost": {
+            "model_usd": 0.005043,
+            "total_usd": 0.005376,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 2,
+          "model_calls": 3,
+          "browser_seconds": 55,
+          "created_at": "2026-11-25T08:31:12.621962+00:00",
+          "started_at": "2026-11-25T08:31:12.632717+00:00",
+          "finished_at": "2026-11-25T08:32:08.108684+00:00"
+        },
+        "seen": {
+          "running": 0.31,
+          "completed": 55.64
+        },
+        "model_usd_over_cap": -0.0049570000000000005
+      },
+      "runtime_60": {
+        "final": {
+          "status": "failed",
+          "error": {
+            "code": "time_limit",
+            "message": "Stopped after 60 s"
+          },
+          "result": null,
+          "verification": null,
+          "cost": {
+            "model_usd": 0.007901,
+            "total_usd": 0.008234,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 4,
+          "model_calls": 9,
+          "browser_seconds": 61,
+          "created_at": "2026-11-25T08:32:08.594011+00:00",
+          "started_at": "2026-11-25T08:32:08.609155+00:00",
+          "finished_at": "2026-11-25T08:33:09.830383+00:00"
+        },
+        "seen": {
+          "running": 0.31,
+          "failed": 62.32
+        }
+      },
+      "unreachable_start_url": {
+        "final": {
+          "status": "completed",
+          "error": null,
+          "result": {
+            "output": null,
+            "output_text": "The URL could not be loaded (`ERR_SOCKS_CONNECTION_FAILED`), so I could not determine the page title."
+          },
+          "verification": {
+            "method": "agent_reported",
+            "passed": null
+          },
+          "cost": {
+            "model_usd": 0.005844,
+            "total_usd": 0.006177,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 2,
+          "model_calls": 3,
+          "browser_seconds": 23,
+          "created_at": "2026-11-25T08:33:11.379401+00:00",
+          "started_at": "2026-11-25T08:33:11.403913+00:00",
+          "finished_at": "2026-11-25T08:33:35.151765+00:00"
+        },
+        "seen": {
+          "running": 0.31,
+          "completed": 23.82
+        }
+      },
+      "max_cost_50_with_10_usd_credit": {
+        "status": 202,
+        "code": null,
+        "type": null,
+        "message": "",
+        "created": true
+      },
+      "byok_header_with_moss_fast": {
+        "status": 400,
+        "code": "provider_key_not_supported",
+        "type": "invalid_request_error",
+        "message": "Tasks on this server do not take X-Moss-Provider-Key. Create the task without it",
+        "created": false
+      },
+      "model_fastlane_1": {
+        "status": 202,
+        "code": null,
+        "type": null,
+        "message": "",
+        "created": true,
+        "final": {
+          "status": "completed",
+          "error": null,
+          "result": {
+            "output": null,
+            "output_text": "example.com (https://example.com/) has **no heading element** \u2014 no `<h1>` (or any `h1`\u2013`h6`, `header`, or `[role=heading]`) in the DOM. The page's `<title>` is \"Example Domain\" and its first (topmost) visible text is the paragraph:\n\n> \"This domain is for use in documentation examples without needing permission. This is not a service; avoid relying on it for testing and monitoring purposes.\"\n\nSo there is no main heading to return; the document title \"Example Domain\" is the closest thing to a heading. Saved to `outputs/answer.md`."
+          },
+          "verification": {
+            "method": "agent_reported",
+            "passed": null
+          },
+          "cost": {
+            "model_usd": 0.010969,
+            "total_usd": 0.011302,
+            "browser_usd": 0.0003333333333333333,
+            "traffic_usd": null
+          },
+          "steps": 8,
+          "model_calls": 9,
+          "browser_seconds": 14,
+          "created_at": "2026-11-25T08:33:36.477482+00:00",
+          "started_at": "2026-11-25T08:33:36.495308+00:00",
+          "finished_at": "2026-11-25T08:33:50.994031+00:00"
+        }
+      }
+    },
+    "queue_and_polling": {
+      "queue_fill": {
+        "created": 23,
+        "first_429_index": null,
+        "error_429": null,
+        "retry_after": null,
+        "statuses_at_create": [
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued",
+          "queued"
+        ]
+      },
+      "cancel_all_s": 1.71,
+      "poll_hammer_20x15s": {
+        "requests": 819,
+        "status_counts": {
+          "200": 819
+        },
+        "p50_ms": 320.65169990528375,
+        "p99_ms": 1261.0930999508128
+      }
+    },
+    "reconcile": {
+      "tasks_created": 38,
+      "total_usd": 0.22043200000000004,
+      "rows": [
+        {
+          "id": "task_0222271d82164cd481c86bb44e591113",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.004942,
+          "total_usd": 0.005275,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_0994ace7ea514014817a20d17bd27723",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.0,
+          "total_usd": 0.000333,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_0e955fc4392047d39e0cb23382bf30c7",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.004315,
+          "total_usd": 0.004648,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_1630b7840c47425d984f2e3710ed7b3e",
+          "status": "completed",
+          "error": null,
+          "model_usd": 0.006321,
+          "total_usd": 0.006654,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_247cfa7c7a444862aa75b1bfcf445134",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.0,
+          "total_usd": 0.000333,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_331cdd04a1fd405fa85e24abe17570eb",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.004455,
+          "total_usd": 0.004788,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_35488e227e8b45ad8a95a114cc513b40",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.004673,
+          "total_usd": 0.005006,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_36457a9cbf8f48b4a9662f795beadaf1",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.0,
+          "total_usd": 0.000333,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_37a8a4f23a5e4f25b1c0eeae045a5036",
+          "status": "completed",
+          "error": null,
+          "model_usd": 0.005043,
+          "total_usd": 0.005376,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_4033393b0f264255b01eaf4e468ced66",
+          "status": "completed",
+          "error": null,
+          "model_usd": 0.010969,
+          "total_usd": 0.011302,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_4b133bd45f764589b7031c0213e5e067",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.006658,
+          "total_usd": 0.006991,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_4c50444d1e364a4fa6ef30c005e3b63b",
+          "status": "cancelled",
+          "error": null,
+          "model_usd": 0.0,
+          "total_usd": 0.000333,
+          "browser_usd": 0.0003333333333333333,
+          "traffic_usd": null
+        },
+        {
+          "id": "task_522e062ad29249db8342ee71625b3876",
+          
+```
