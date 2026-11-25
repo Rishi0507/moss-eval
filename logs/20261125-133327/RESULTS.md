@@ -1,0 +1,185 @@
+# Results for run `20261125-133327`
+
+Base URL: `https://inference.moss.dev/v1`. Spend: $0.0000.
+
+## Preflight (no key)
+
+401 round trip on /chat/completions: p50 18 ms, p95 43 ms.
+401 round trip on /tasks: p50 312 ms, p95 491 ms.
+
+| credentials, route (body `{"model": ...}` only) | status | message |
+| - | - | - |
+| missing /chat/completions | 401 | Missing bearer token |
+| missing /responses | 400 | input must be a string or a list of items |
+| missing /tasks | 401 | Missing bearer token |
+| no_colon /chat/completions | 401 | Send Bearer project_id:project_key |
+| no_colon /responses | 400 | input must be a string or a list of items |
+| no_colon /tasks | 401 | Send Bearer project_id:project_key |
+| empty_parts /chat/completions | 401 | Send Bearer project_id:project_key |
+| empty_parts /responses | 400 | input must be a string or a list of items |
+| empty_parts /tasks | 401 | Send Bearer project_id:project_key |
+| wrong_pair /chat/completions | 400 | messages is required |
+| wrong_pair /responses | 400 | input must be a string or a list of items |
+| wrong_pair /tasks | 401 | The project credentials were rejected |
+| basic_scheme /chat/completions | 401 | Missing bearer token |
+| basic_scheme /responses | 400 | input must be a string or a list of items |
+| basic_scheme /tasks | 401 | Missing bearer token |
+| lowercase_bearer /chat/completions | 400 | messages is required |
+| lowercase_bearer /responses | 400 | input must be a string or a list of items |
+| lowercase_bearer /tasks | 401 | The project credentials were rejected |
+
+| credentials, route (valid body) | status | message |
+| - | - | - |
+| missing /chat/completions | 401 | Missing bearer token |
+| missing /responses | 401 | Missing bearer token |
+| wrong_pair /chat/completions | 401 | The project credentials were rejected |
+| wrong_pair /responses | 401 | The project credentials were rejected |
+
+## Full results
+
+Every section, as JSON:
+
+```json
+{
+  "run_id": "20261125-133327",
+  "base_url": "https://inference.moss.dev/v1",
+  "started": 1795593808.5882053,
+  "preflight": {
+    "rtt_401_s": {
+      "p50": 0.018187900073826313,
+      "p95": 0.04317559989867743,
+      "n": 19
+    },
+    "rtt_401_tasks_s": {
+      "p50": 0.31198740005493164,
+      "p95": 0.4906832899316226,
+      "n": 19
+    },
+    "models_no_auth": {
+      "status": 200,
+      "count": 19
+    },
+    "models_bad_auth_status": 200,
+    "auth": {
+      "missing /chat/completions": [
+        401,
+        "Missing bearer token"
+      ],
+      "missing /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "missing /tasks": [
+        401,
+        "Missing bearer token"
+      ],
+      "no_colon /chat/completions": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "no_colon /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "no_colon /tasks": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "empty_parts /chat/completions": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "empty_parts /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "empty_parts /tasks": [
+        401,
+        "Send Bearer project_id:project_key"
+      ],
+      "wrong_pair /chat/completions": [
+        400,
+        "messages is required"
+      ],
+      "wrong_pair /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "wrong_pair /tasks": [
+        401,
+        "The project credentials were rejected"
+      ],
+      "basic_scheme /chat/completions": [
+        401,
+        "Missing bearer token"
+      ],
+      "basic_scheme /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "basic_scheme /tasks": [
+        401,
+        "Missing bearer token"
+      ],
+      "lowercase_bearer /chat/completions": [
+        400,
+        "messages is required"
+      ],
+      "lowercase_bearer /responses": [
+        400,
+        "input must be a string or a list of items"
+      ],
+      "lowercase_bearer /tasks": [
+        401,
+        "The project credentials were rejected"
+      ]
+    },
+    "auth_valid_body": {
+      "missing /chat/completions": [
+        401,
+        "Missing bearer token"
+      ],
+      "missing /responses": [
+        401,
+        "Missing bearer token"
+      ],
+      "wrong_pair /chat/completions": [
+        401,
+        "The project credentials were rejected"
+      ],
+      "wrong_pair /responses": [
+        401,
+        "The project credentials were rejected"
+      ]
+    },
+    "malformed_json_no_auth": 401,
+    "get_with_body /tasks": [
+      400,
+      "text/html; charset=UTF-8"
+    ],
+    "get_with_body /models": [
+      400,
+      "text/html; charset=UTF-8"
+    ],
+    "get_with_body /nope": [
+      400,
+      "text/html; charset=UTF-8"
+    ],
+    "unknown_route": [
+      404,
+      null
+    ],
+    "cors_preflight": [
+      200,
+      {
+        "access-control-allow-headers": "authorization,content-type,x-moss-indexes",
+        "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT, QUERY",
+        "access-control-allow-origin": "*",
+        "access-control-max-age": "7200"
+      }
+    ],
+    "base_url": "https://inference.moss.dev/v1"
+  },
+  "spent_usd": 0.0
+}
+```
