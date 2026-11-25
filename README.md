@@ -163,6 +163,27 @@ Broke:
 5. **`moss/fastlane-1` as a task model gave a wrong answer.** Asked for the main heading of example.com, it said the page has "no heading element". The page has `<h1>Example Domain</h1>`, and `moss-fast` returned it on the same goal.
 6. Smaller: `GET /v1/tasks` (not in the docs) returns `200` with an empty body; Moss accepts a `max_cost_usd: 50` cap on a $10 balance.
 
+Task states as the API reported them during the run:
+
+```mermaid
+stateDiagram-v2
+    [*] --> queued: POST /v1/tasks returns 202
+    queued --> running: about 0.3 s later
+    running --> completed: agent returns a result
+    running --> failed: runtime cap reached
+    queued --> cancelled: POST cancel
+    running --> cancelled: POST cancel
+    completed --> [*]
+    failed --> [*]
+    cancelled --> [*]
+    note right of completed
+        Observed here as well:
+        output that breaks the schema
+        (verification passed = true)
+        and a start URL that never loaded
+    end note
+```
+
 ## Findings from the preflight
 
 These come from the no-key preflight. Each one reproduced on every run.
@@ -205,6 +226,20 @@ A `401` from `/v1/chat/completions` comes back in 18 ms at p50 from Mumbai (43 m
 * The overview says Inference is in private beta and links to the portal root to request access. The docs do not mention the `/inference` link that grants access.
 
 ## Layout
+
+```mermaid
+flowchart TD
+    run["run.py"] --> pre["preflight.py<br/>no key, no cost"]
+    run --> inf["inference.py<br/>15 tests"]
+    run --> tsk["tasks.py<br/>8 test groups"]
+    pre --> core["core.py<br/>HTTP client, key redaction,<br/>spend ledger, budget stop"]
+    inf --> core
+    tsk --> core
+    core <--> api["Moss API<br/>inference.moss.dev/v1"]
+    core --> logs[("logs/RUN_ID/<br/>one JSON line per HTTP call")]
+    logs --> rep["report.py"]
+    rep --> out["RESULTS.md<br/>and 7 charts"]
+```
 
 ```text
 run.py                 one command for every stage
