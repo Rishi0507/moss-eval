@@ -96,13 +96,8 @@ def _more_charts(run_dir, out_dir, res, plt):
         x = list(range(len(lv)))
         ax.plot(x, [conc[k]["ttft_s"]["p50"] * 1000 for k in lv], color=BLUE, marker="o", linewidth=2, label="TTFT p50")
         ax.plot(x, [conc[k]["ttft_s"]["p95"] * 1000 for k in lv], color=BLUE, marker="o", linewidth=1, linestyle="--", label="TTFT p95")
-        for i, k in enumerate(lv):
-            r429 = int(conc[k]["status_counts"].get("429", 0))
-            if r429:
-                ax.annotate(f"{r429}/{conc[k]['requests']} got 429", (i, conc[k]["ttft_s"]["p95"] * 1000),
-                            textcoords="offset points", xytext=(0, 10), ha="center", fontsize=7.5, color=ORANGE)
         ax.set_xlim(-0.4, len(lv) - 0.6)
-        ax.set_xticks(x, [f"{k} in flight" for k in lv])
+        ax.set_xticks(x, [f"{k} in flight\n{int(conc[k]['status_counts'].get('429', 0))}/{conc[k]['requests']} got 429" for k in lv])
         ax.set_ylabel("ms (successful requests)", color=INK, fontsize=9)
         ax.set_ylim(0, max(conc[k]["ttft_s"]["p95"] for k in lv) * 1000 * 1.25)
         ax.set_title("fastlane-1 TTFT as concurrency grows", color=INK, fontsize=10, loc="left")
