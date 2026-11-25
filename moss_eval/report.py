@@ -1,4 +1,4 @@
-"""Turns a run's results.json into results/RESULTS.md and two PNG charts."""
+"""Turns a run's results.json into RESULTS.md and two PNG charts."""
 import json
 from pathlib import Path
 

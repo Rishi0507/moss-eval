@@ -50,8 +50,8 @@ Every account gets $10 in credits. I sized each test before running it.
 
 | Stage | Worst case | Why |
 | - | - | - |
-| Inference | about $0.45 | About 400 short calls to `moss/fastlane-1`, plus one 280k token prompt that should get rejected and might bill about $0.14 if it does not |
-| Tasks | about $1.50 | About 45 tasks. Most get cancelled while queued. Each running one has a `max_cost_usd` cap between $0.01 and $0.20 |
+| Inference | about $0.45 | About 400 short calls to `moss/fastlane-1`, plus one 280k token prompt that Moss should reject. If Moss bills it, it costs about $0.14 |
+| Tasks | about $1.50 | About 45 tasks. The harness cancels most of them in the queue. Each running one has a `max_cost_usd` cap between $0.01 and $0.20 |
 | Total | under $2 | Leaves room to rerun the latency tests |
 
 ## What the harness tests
@@ -81,15 +81,15 @@ Every account gets $10 in credits. I sized each test before running it.
 | Test | What it checks |
 | - | - |
 | `routes` | Unknown and malformed ids, the files routes, a list route the docs do not mention, a path traversal attempt on file names |
-| `validation` | 30 invalid bodies and headers: every documented range plus types, unknown keys, sizes, bad URLs, bad idempotency keys. Any task one of them creates gets cancelled and flagged |
+| `validation` | 30 invalid bodies and headers: every documented range plus types, unknown keys, sizes, bad URLs, bad idempotency keys. If one of them creates a task, the harness cancels and flags it |
 | `lifecycle` | A task with an `output_schema` on `moss-fast` and `moss-balanced`. Time in each status, files before and after the end, a file download, metadata echo, cancel after finish |
-| `schema_mismatch` | A schema no answer can match. Does the task still end `completed` with `verification.passed: false`, as the docs say? |
+| `schema_mismatch` | A schema no answer can match. Does the task end `completed` with `verification.passed: false`, as the docs say? |
 | `idempotency` | Replay, replay with reordered JSON keys, same key with another body, 8 parallel creates with one key, and two creates with no key |
 | `cancel` | Cancel while queued, cancel twice, cancel while running. Time to `cancelled` and cost after the cancel |
 | `limits` | `max_cost_usd: 0.01` (how far past the cap the spend goes), `max_runtime_seconds: 60`, a start URL that does not resolve, a $50 cap on a $10 balance, a provider key on a `moss-*` model, `moss/fastlane-1` as a task model |
 | `queue_and_polling` | Fill the queue past the limit of 20, then 20 pollers on one task for 15 s |
 
-I did not drain the credits to see `usage_limit_exceeded`. That would cost the full $10 and end the test. The run records whether a task cap above the balance gets accepted.
+I did not drain the credits to see `usage_limit_exceeded`. That would cost the full $10 and end the test. The run records whether Moss accepts a task cap above the balance.
 
 ## Live run results
 
@@ -132,20 +132,20 @@ The other 24 error cases matched the docs, each with a request id.
 
 ### Tasks
 
-What held up:
+Held up:
 - 8 parallel creates with one `Idempotency-Key` made one task; 7 came back with the replay flag. The same key with another body got `422 idempotency_key_reused`.
 - Files before the end return `409 task_not_finished`; after the end, 5 screenshots listed, and the one I downloaded matched its listed size.
 - `max_runtime_seconds: 60` stopped the task at 61 s with `time_limit`.
 - 819 polls on one task from 20 pollers: all 200, p50 321 ms, p99 1261 ms.
 
-Where it broke:
+Broke:
 
 1. **Schema verification passes an answer that breaks the schema.** Schema `{"n": {"type": "integer", "minimum": 10, "maximum": 5}}` (no value can match). The task ended `completed` with output `{"n": 1}` and `verification: {"method": "output_schema", "passed": true}`. The docs say it should end with `passed: false`. Repro: `python run.py tasks --only schema_mismatch`.
-2. **A start URL that does not load still ends `completed`.** The agent wrote `ERR_SOCKS_CONNECTION_FAILED` into `output_text`, status `completed`, `verification.passed: null`, billed $0.0062. A client checking `status` reads this as success.
+2. **A start URL that does not load ends `completed`.** The agent wrote `ERR_SOCKS_CONNECTION_FAILED` into `output_text`, status `completed`, `verification.passed: null`, billed $0.0062. A client checking `status` reads this as success.
 3. **The 20-task queue limit did not apply.** I created 23 tasks back to back; all 23 came back `202 queued`, no `429`.
 4. **Cost reads $0 while a task runs.** 15 s into a running task, `usage.cost.total_usd` was 0.0. The final cost after cancel was $0.0056 over 5 model calls. A client cannot enforce its own budget mid-run.
 5. **`moss/fastlane-1` as a task model gave a wrong answer.** Asked for the main heading of example.com, it said the page has "no heading element". The page has `<h1>Example Domain</h1>`, and `moss-fast` returned it on the same goal.
-6. Smaller: `GET /v1/tasks` (not in the docs) returns `200` with an empty body; a `max_cost_usd: 50` cap on a $10 balance gets accepted.
+6. Smaller: `GET /v1/tasks` (not in the docs) returns `200` with an empty body; Moss accepts a `max_cost_usd: 50` cap on a $10 balance.
 
 ## Findings from the preflight
 
@@ -175,7 +175,7 @@ curl -s https://inference.moss.dev/v1/chat/completions -H "Authorization: Bearer
 
 ### 3. `/v1/models` needs no key
 
-The docs show the call with a bearer token. It returns `200` and all 19 models with no header and with a wrong key. Listing public model ids is harmless, but the docs and the server disagree.
+The docs show the call with a bearer token. It returns `200` and all 19 models with no header and with a wrong key. Model ids are public, so this leaks nothing. The docs should drop the token, or the server should check it.
 
 ### 4. The Tasks control plane sits far from the inference edge
 
@@ -183,10 +183,10 @@ A `401` from `/v1/chat/completions` comes back in 18 ms at p50 from Mumbai (43 m
 
 ### 5. Smaller things
 
-* `GET` with a body on any route gets an HTML `400` page from the Google load balancer instead of the JSON error shape. Normal clients never send this.
-* `docs.usemoss.dev` serves a TLS certificate that expired on 3 Apr 2026 and then a 404. The live docs moved to `docs.moss.dev`, and nothing links to the old host, but it still resolves.
+* `GET` with a body on any route gets an HTML `400` page from the Google load balancer instead of the JSON error shape. Standard HTTP clients do not send a body on `GET`.
+* `docs.usemoss.dev` serves a TLS certificate that expired on 3 Apr 2026 and then a 404. The live docs moved to `docs.moss.dev`, and nothing links to the old host. The old host keeps resolving.
 * The Quickstart says inference has "no included allowance" and to buy at least $5 of credits first. The signup link Moss sent gives $10. A new user who reads the docs first would think they have to pay.
-* The overview says Inference is in private beta and links to the portal root to request access. The `/inference` link that grants access is not in the docs.
+* The overview says Inference is in private beta and links to the portal root to request access. The docs do not mention the `/inference` link that grants access.
 
 ## Layout
 
