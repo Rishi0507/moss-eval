@@ -2,6 +2,16 @@
 
 A test harness for [Moss Inference](https://docs.moss.dev/docs/inference/overview) and its Tasks API. I wrote it for the Moss work sample. It checks the API against the docs, measures latency from my machine in Mumbai, and tries to break the Tasks API. Every HTTP call lands in a JSON log, so you can check each number against the raw response.
 
+## At a glance
+
+| Area | Result |
+| - | - |
+| Inference speed | `moss/fastlane-1` first token at 96 ms p50, 202 ms p95 from Mumbai |
+| Inference error handling | 24 of 27 bad requests got the error the docs promise |
+| Tasks idempotency | 8 parallel creates with one key made one task |
+| Tasks issues | 5 reproduced, each with a repro step under [Live run results](#live-run-results) |
+| Spend | $0.25 of the $10 credits |
+
 ## Status
 
 | Stage | Needs a key | State |
