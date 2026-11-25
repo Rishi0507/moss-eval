@@ -89,6 +89,16 @@ Non-streaming, 100 max tokens: p50 684 ms, p95 856 ms, p99 901 ms (n=60).
 
 ![concurrency.png](concurrency.png)
 
+![concurrency_ttft.png](concurrency_ttft.png)
+
+![vendor_ttft.png](vendor_ttft.png)
+
+![prefix_cache.png](prefix_cache.png)
+
+![tasks_timeline.png](tasks_timeline.png)
+
+![poll_latency.png](poll_latency.png)
+
 ## Full results
 
 Every section, as JSON:

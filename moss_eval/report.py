@@ -1,4 +1,4 @@
-"""Turns a run's results.json into RESULTS.md and two PNG charts."""
+"""Turns a run's results.json into RESULTS.md and PNG charts."""
 import json
 from pathlib import Path
 
@@ -72,6 +72,123 @@ def charts(run_dir: Path, out_dir: Path):
         fig.savefig(p, dpi=150)
         plt.close(fig)
         made.append(p.name)
+    made += _more_charts(run_dir, out_dir, res, plt)
+    return made
+
+
+def _save(fig, plt, out_dir, name):
+    fig.tight_layout()
+    fig.savefig(out_dir / name, dpi=150)
+    plt.close(fig)
+    return name
+
+
+def _more_charts(run_dir, out_dir, res, plt):
+    made = []
+    inf, tasks = res.get("inference") or {}, res.get("tasks") or {}
+    GREEN, GREY = "#2f9e6e", "#9a9993"
+
+    conc = inf.get("concurrency") or {}
+    if conc and all(isinstance(v, dict) and v.get("ttft_s") for v in conc.values()):
+        lv = sorted(conc, key=int)
+        fig, ax = plt.subplots(figsize=(6.4, 3.4), facecolor=SURFACE)
+        _style(ax)
+        x = list(range(len(lv)))
+        ax.plot(x, [conc[k]["ttft_s"]["p50"] * 1000 for k in lv], color=BLUE, marker="o", linewidth=2, label="TTFT p50")
+        ax.plot(x, [conc[k]["ttft_s"]["p95"] * 1000 for k in lv], color=BLUE, marker="o", linewidth=1, linestyle="--", label="TTFT p95")
+        for i, k in enumerate(lv):
+            r429 = int(conc[k]["status_counts"].get("429", 0))
+            if r429:
+                ax.annotate(f"{r429}/{conc[k]['requests']} got 429", (i, conc[k]["ttft_s"]["p95"] * 1000),
+                            textcoords="offset points", xytext=(0, 10), ha="center", fontsize=7.5, color=ORANGE)
+        ax.set_xlim(-0.4, len(lv) - 0.6)
+        ax.set_xticks(x, [f"{k} in flight" for k in lv])
+        ax.set_ylabel("ms (successful requests)", color=INK, fontsize=9)
+        ax.set_ylim(0, max(conc[k]["ttft_s"]["p95"] for k in lv) * 1000 * 1.25)
+        ax.set_title("fastlane-1 TTFT as concurrency grows", color=INK, fontsize=10, loc="left")
+        ax.legend(frameon=False, fontsize=8, labelcolor=INK, loc="upper left")
+        made.append(_save(fig, plt, out_dir, "concurrency_ttft.png"))
+
+    vc = inf.get("vendor_compare") or {}
+    vc = {m: d["ttft_s"] for m, d in vc.items() if (d or {}).get("ttft_s")}
+    if vc:
+        ms = sorted(vc, key=lambda m: vc[m]["p50"], reverse=True)
+        fig, ax = plt.subplots(figsize=(7.6, 2.8), facecolor=SURFACE)
+        _style(ax)
+        ax.grid(axis="y", visible=False)
+        ax.grid(axis="x", color="#ececea", linewidth=0.8)
+        y = list(range(len(ms)))
+        ax.barh(y, [vc[m]["p50"] * 1000 for m in ms], color=[BLUE if m.startswith("moss/") else GREY for m in ms], height=0.55)
+        ax.scatter([vc[m]["p95"] * 1000 for m in ms], y, color=INK, marker="|", s=200, zorder=3)
+        for i, m in enumerate(ms):
+            ax.text(vc[m]["p95"] * 1000 + 40, i, f"p50 {vc[m]['p50'] * 1000:.0f} ms, p95 {vc[m]['p95'] * 1000:.0f} ms",
+                    va="center", fontsize=8, color=INK)
+        ax.set_yticks(y, [f"{m} (n={vc[m]['n']})" for m in ms])
+        ax.set_xlim(0, max(vc[m]["p95"] for m in ms) * 1000 * 1.75)
+        ax.set_xlabel("Time to first token (ms) from Mumbai. Bar: p50. Tick: p95", color=INK, fontsize=9)
+        ax.set_title("TTFT by model, same Moss key", color=INK, fontsize=10, loc="left")
+        made.append(_save(fig, plt, out_dir, "vendor_ttft.png"))
+
+    pc = [c for c in ((inf.get("caches") or {}).get("prefix_cache") or []) if c.get("ttft_s")]
+    if len(pc) >= 2:
+        fig, ax = plt.subplots(figsize=(6.4, 2.8), facecolor=SURFACE)
+        _style(ax)
+        labels = ["cold" if i == 0 else f"warm {i}" for i in range(len(pc))]
+        bars = ax.bar(range(len(pc)), [c["ttft_s"] * 1000 for c in pc], color=[GREY] + [GREEN] * (len(pc) - 1), width=0.55)
+        for b, c in zip(bars, pc):
+            ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 8, f"{c['ttft_s'] * 1000:.0f} ms\n{c['cached']}/{c['prompt_tokens']} cached",
+                    ha="center", fontsize=7.5, color=INK)
+        ax.set_xticks(range(len(pc)), labels)
+        ax.set_ylim(0, max(c["ttft_s"] for c in pc) * 1000 * 1.35)
+        ax.set_ylabel("TTFT (ms)", color=INK, fontsize=9)
+        ax.set_title("Prefix cache on a 6.9k token system prompt", color=INK, fontsize=10, loc="left")
+        made.append(_save(fig, plt, out_dir, "prefix_cache.png"))
+
+    runs = []
+    for label, d in (("lifecycle, moss-fast", (tasks.get("lifecycle") or {}).get("moss-fast")),
+                     ("lifecycle, moss-balanced", (tasks.get("lifecycle") or {}).get("moss-balanced")),
+                     ("unsatisfiable schema", tasks.get("schema_mismatch")),
+                     ("cost cap $0.01", (tasks.get("limits") or {}).get("budget_0_01")),
+                     ("runtime cap 60 s", (tasks.get("limits") or {}).get("runtime_60")),
+                     ("start URL does not load", (tasks.get("limits") or {}).get("unreachable_start_url"))):
+        seen = (d or {}).get("seen") or (d or {}).get("status_first_seen_s")
+        final = (d or {}).get("final") or {}
+        if seen and final.get("status") in seen:
+            runs.append((label, seen.get("running", 0), seen[final["status"]], final["status"],
+                         ((final.get("cost") or {}).get("total_usd") or 0), (final.get("verification") or {}).get("passed")))
+    if runs:
+        colors = {"completed": GREEN, "failed": ORANGE, "cancelled": GREY}
+        fig, ax = plt.subplots(figsize=(7.2, 0.5 * len(runs) + 1.2), facecolor=SURFACE)
+        _style(ax)
+        ax.grid(axis="y", visible=False)
+        ax.grid(axis="x", color="#ececea", linewidth=0.8)
+        runs = runs[::-1]
+        for i, (label, start, end, st, cost, passed) in enumerate(runs):
+            ax.barh(i, end - start, left=start, color=colors.get(st, BLUE), height=0.5)
+            note = f"{st}, ${cost:.4f}" + ("" if passed is None else f", verified={str(passed).lower()}")
+            ax.text(end + 1, i, note, va="center", fontsize=7.5, color=INK)
+        ax.set_yticks(range(len(runs)), [r[0] for r in runs])
+        ax.set_xlim(0, max(r[2] for r in runs) * 1.75)
+        ax.set_xlabel("Seconds after create (first poll that saw each status)", color=INK, fontsize=9)
+        ax.set_title("Tasks API: time to a terminal status, final status and cost", color=INK, fontsize=10, loc="left")
+        made.append(_save(fig, plt, out_dir, "tasks_timeline.png"))
+
+    tf = run_dir / "tasks.jsonl"
+    if tf.exists():
+        lat = sorted(r["latency_s"] * 1000 for r in map(json.loads, tf.read_text(encoding="utf-8").splitlines())
+                     if r.get("test") == "poll_hammer" and r.get("status") == 200 and r.get("latency_s"))
+        if lat:
+            p50, p99 = lat[len(lat) // 2], lat[min(len(lat) - 1, int(len(lat) * 0.99))]
+            fig, ax = plt.subplots(figsize=(6.4, 3.0), facecolor=SURFACE)
+            _style(ax)
+            ax.hist(lat, bins=40, color=BLUE)
+            for v, name in ((p50, "p50"), (p99, "p99")):
+                ax.axvline(v, color=ORANGE, linewidth=1, linestyle="--")
+                ax.text(v + 10, ax.get_ylim()[1] * 0.9, f"{name} {v:.0f} ms", color=ORANGE, fontsize=8)
+            ax.set_xlabel("GET /v1/tasks/{id} latency (ms)", color=INK, fontsize=9)
+            ax.set_ylabel("Polls", color=INK, fontsize=9)
+            ax.set_title(f"{len(lat)} polls from 20 concurrent pollers on one task", color=INK, fontsize=10, loc="left")
+            made.append(_save(fig, plt, out_dir, "poll_latency.png"))
     return made
 
 
