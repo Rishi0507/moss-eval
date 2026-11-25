@@ -1,6 +1,6 @@
 # Moss Inference: what I tested and what I would fix
 
-Rishi Popawala, rishipopawala@gmail.com. Code, scripts and raw logs: {{REPO_URL}}
+Rishi Popawala, rishipopawala@gmail.com. Code, scripts and raw logs: https://github.com/Rishi0507/moss-eval
 
 I ran everything from Mumbai on home broadband on 25 Nov 2026 and spent $0.25 of the $10 credits. You can check each number below against the logs in the repo.
 
