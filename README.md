@@ -109,7 +109,13 @@ All numbers come from [`logs/20261125-134920/RESULTS.md`](logs/20261125-134920/R
 | `json_schema`, 5 runs | 5 of 5 valid |
 | Usage counts | prompt + completion = total on every call; output within 1 token of `o200k_base` |
 
-Concurrency (`concurrency.png`):
+![TTFT distribution for fastlane-1](logs/20261125-134920/ttft_cdf.png)
+
+![TTFT by model on the same key](logs/20261125-134920/vendor_ttft.png)
+
+![Prefix cache TTFT, cold and warm](logs/20261125-134920/prefix_cache.png)
+
+Concurrency:
 
 | In flight | OK | 429 | TTFT p50 |
 | - | - | - | - |
@@ -117,6 +123,10 @@ Concurrency (`concurrency.png`):
 | 4 | 8 of 8 | 0 | 360 ms |
 | 16 | 12 of 32 | 20 | 1091 ms |
 | 64 | 13 of 128 | 115 | 625 ms |
+
+![TTFT as concurrency grows](logs/20261125-134920/concurrency_ttft.png)
+
+![Throughput and failed requests by concurrency](logs/20261125-134920/concurrency.png)
 
 Headers say `x-ratelimit-limit-requests: 120`, but `remaining` starts at 10, so the real ceiling is the burst of 10.
 
@@ -132,11 +142,17 @@ The other 24 error cases matched the docs, each with a request id.
 
 ### Tasks
 
+![Time to a terminal status, final status and cost per task](logs/20261125-134920/tasks_timeline.png)
+
+The unsatisfiable schema and the dead start URL both end green. Both should end with a failure signal.
+
 Held up:
 - 8 parallel creates with one `Idempotency-Key` made one task; 7 came back with the replay flag. The same key with another body got `422 idempotency_key_reused`.
 - Files before the end return `409 task_not_finished`; after the end, 5 screenshots listed, and the one I downloaded matched its listed size.
 - `max_runtime_seconds: 60` stopped the task at 61 s with `time_limit`.
 - 819 polls on one task from 20 pollers: all 200, p50 321 ms, p99 1261 ms.
+
+![Poll latency histogram](logs/20261125-134920/poll_latency.png)
 
 Broke:
 
